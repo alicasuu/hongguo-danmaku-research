@@ -1,0 +1,2 @@
+drama_id,episode_id,comment_id,parent_id,text,posted_at,like_count,coverage,source
+REAL_DRAMA_ID,REAL_EPISODE_ID,ACTUAL_COMMENT_ID,,例子——用真实导出数据替换,2026-11-08T10:00:00+08:00,3,partial,authorized_export

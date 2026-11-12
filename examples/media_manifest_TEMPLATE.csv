@@ -1,0 +1,2 @@
+drama_id,episode_id,local_path,direct_url,rights_confirmed,access_basis,is_full_episode,expected_duration_seconds,subtitle_path,source,note
+DEMO_DRAMA_001,DEMO_EP_001,/REPLACE/WITH/AUTHORIZED/full_episode_001.mp4,,false,REPLACE_WITH_PERMISSION_REFERENCE,true,90,/REPLACE/WITH/AUTHORIZED/subtitle.srt,authorized_export,Fill only with authorized real files

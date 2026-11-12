@@ -1,0 +1,2 @@
+drama_id,episode_id,message_id,text,playback_time_ms,timing_method,posted_at,captured_at,source,coverage
+REAL_DRAMA_ID,REAL_EPISODE_ID,ACTUAL_MESSAGE_ID,例子——用真实导出数据替换,42000,platform_native,2026-11-08T10:00:00+08:00,2026-11-09T10:00:00+08:00,authorized_export,partial

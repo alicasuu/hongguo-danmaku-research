@@ -1,0 +1,2 @@
+drama_id,episode_id,scope,metric,value,raw_value,precision,observed_at,collected_at,source,source_url
+REAL_DRAMA_ID,REAL_EPISODE_ID,episode,views,12345,1.2万播放,rounded_display,2026-11-09T10:00:00+08:00,2026-11-09T10:00:00+08:00,authorized_export,https://REPLACE_WITH_REAL_SOURCE

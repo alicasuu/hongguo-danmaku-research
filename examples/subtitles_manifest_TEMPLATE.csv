@@ -1,0 +1,2 @@
+drama_id,episode_id,subtitle_path,rights_confirmed,access_basis,source
+REAL_DRAMA_ID,REAL_EPISODE_ID,/REPLACE/WITH/AUTHORIZED/subtitle.srt,false,REPLACE_WITH_PERMISSION_REFERENCE,authorized_export

@@ -1,0 +1,3 @@
+drama_id,episode_id,comment_id,parent_id,text,posted_at,like_count,coverage
+DEMO_DRAMA_001,DEMO_EP_001,DEMO_COMMENT_01,,这是虚构的评论样本,2026-11-01T08:00:00+00:00,3,partial
+DEMO_DRAMA_001,DEMO_EP_001,DEMO_COMMENT_02,DEMO_COMMENT_01,这是虚构的回复,2026-11-01T09:00:00+00:00,1,partial

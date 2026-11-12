@@ -1,1 +1,37 @@
-# Source-only research repository. Full ignore rules added with initial source import.
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+# Never commit provider data, credentials, video, raw comments or captured browser cookies.
+data/
+output/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.part
+*profile*/
+.env
+
+# macOS, archives, generated experiment output, notebooks' local data
+.DS_Store
+__MACOSX/
+*.zip
+*.jar
+*.class
+*.dSYM/
+experiments/quicktime_ocr/runs/
+experiments/quicktime_ocr/clock_check/
+experiments/quicktime_ocr/vision_ocr
+experiments/quicktime_ocr/*_ocr.json
+experiments/quicktime_ocr/debug_*.png
+experiments/hgtv_offline/.deps/
+experiments/hgtv_offline/.build/
+experiments/hgtv_offline/vendor/
+*.pem
+*.key
+*credentials*
+*cookie*

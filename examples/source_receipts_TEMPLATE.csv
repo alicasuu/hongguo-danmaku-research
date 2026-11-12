@@ -1,0 +1,3 @@
+drama_id,episode_id,data_kind,source,source_url,coverage,reported_total,rows_seen,observed_at,rights_basis,evidence_file,note
+REAL_DRAMA_ID,REAL_EPISODE_ID,danmaku,official_authorized_export,,partial,,,2026-11-09T12:00:00+00:00,research_permission,,DO NOT MARK FULL WITHOUT VERIFIED SOURCE COVERAGE
+REAL_DRAMA_ID,REAL_EPISODE_ID,comments,official_authorized_export,,partial,,,2026-11-09T12:00:00+00:00,research_permission,,Partial is valid evidence but does not pass full gate

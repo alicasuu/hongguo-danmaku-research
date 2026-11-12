@@ -1,0 +1,11 @@
+{
+  "ordered_drama_ids": ["REAL_01", "REAL_02", "REAL_03", "REAL_04", "REAL_05", "REAL_06", "REAL_07", "REAL_08", "REAL_09", "REAL_10"],
+  "criteria": "drama_level_actual_views",
+  "source_url": "REPLACE_WITH_REAL_SOURCE_URL",
+  "observed_at": "2026-11-09T12:00:00+08:00",
+  "candidate_population_size": 0,
+  "population_scope": "REPLACE_WITH_SCOPE_AND_ELIGIBILITY_RULES",
+  "covers_entire_target_population": false,
+  "verified_by": "REPLACE_WITH_REVIEWER_NAME_OR_INITIALS",
+  "note": "Only set covers_entire_target_population=true when verified by the research team. Never use heat or engagement composite as views."
+}

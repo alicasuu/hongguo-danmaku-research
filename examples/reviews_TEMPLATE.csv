@@ -1,0 +1,2 @@
+drama_id,reviewer,ai_or_live_action,human_likeness,voice_language,voice_type,subtitle_language,burned_in_subtitles,sampled_episode_id,frames_reviewed,confidence,note,reviewed_at
+REAL_DRAMA_ID,Alica,unknown,3,zh,unknown,zh,yes,REAL_EPISODE_ID,4,low,Human review; replace with actual annotations,2026-11-09T12:00:00+08:00
