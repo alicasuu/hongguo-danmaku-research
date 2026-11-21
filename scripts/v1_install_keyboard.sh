@@ -16,12 +16,12 @@ adb install -r "$keyboard_apk"
 # On a newly booted API-35 emulator, PackageManager may need several
 # seconds to register a newly installed input-method service.
 for attempt in $(seq 1 20); do
-  if adb shell ime list -s 2>/dev/null | grep -F -q 'com.android.adbkeyboard/.AdbIME'; then
+  if adb shell ime list -a 2>/dev/null | grep -F -q 'com.android.adbkeyboard/.AdbIME'; then
     break
   fi
   sleep 2
 done
-adb shell ime list -s | grep -F 'com.android.adbkeyboard/.AdbIME'
+adb shell ime list -a | grep -F 'com.android.adbkeyboard/.AdbIME'
 adb shell ime enable com.android.adbkeyboard/.AdbIME
 adb shell ime set com.android.adbkeyboard/.AdbIME
 adb shell ime list -s | grep 'com.android.adbkeyboard'
