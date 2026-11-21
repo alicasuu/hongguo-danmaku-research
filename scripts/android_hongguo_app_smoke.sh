@@ -87,15 +87,30 @@ adb exec-out screencap -p > "$outdir/after_notification.png"
 # This fresh, isolated emulator is never signed in. The user explicitly
 # approved accepting Hongguo's first-run agreement/privacy notice for this
 # research session on 2026-11-21. Only accept after verifying exact UI labels.
-timeout 20s adb shell uiautomator dump /sdcard/hongguo-consent.xml > /dev/null 2>&1 || true
-consent_ui="$(adb shell cat /sdcard/hongguo-consent.xml 2>/dev/null || true)"
-if [[ "$consent_ui" == *"欢迎使用红果免费短剧"* && "$consent_ui" == *"同意并继续"* ]]; then
-  printf 'First-run notice: user-authorized agreement accepted\\n' >> "$outdir/report.txt"
-  adb shell input tap 540 1470
-  sleep 10
-else
-  printf 'First-run notice: absent or unrecognized; no blind consent tap\\n' >> "$outdir/report.txt"
-fi
+# Determine the agreement button's center from the live UI bounds, rather
+# than assuming a fixed Y coordinate (the layout varies across clean launches).
+accept_verified_consent() {
+  for consent_attempt in 1 2 3; do
+    timeout 20s adb shell uiautomator dump /sdcard/hongguo-consent.xml > /dev/null 2>&1 || true
+    local consent_ui button_node coords
+    consent_ui="$(adb shell cat /sdcard/hongguo-consent.xml 2>/dev/null || true)"
+    if [[ "$consent_ui" != *"欢迎使用红果免费短剧"* || "$consent_ui" != *"同意并继续"* ]]; then
+      break
+    fi
+    button_node="$(printf '%s' "$consent_ui" | grep -o 'text="同意并继续"[^>]*' | head -1)"
+    if [[ "$button_node" =~ bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]" ]]; then
+      local center_x=$(( (BASH_REMATCH[1] + BASH_REMATCH[3]) / 2 ))
+      local center_y=$(( (BASH_REMATCH[2] + BASH_REMATCH[4]) / 2 ))
+      printf 'First-run notice: verified button bounds; accepting at (%s,%s)\\n' "$center_x" "$center_y" >> "$outdir/report.txt"
+      adb shell input tap "$center_x" "$center_y"
+      sleep 8
+    else
+      printf 'First-run notice: button bounds absent; no blind tap\\n' >> "$outdir/report.txt"
+      break
+    fi
+  done
+}
+accept_verified_consent
 dismiss_system_overlays
 adb exec-out screencap -p > "$outdir/after_consent.png"
 timeout 20s adb shell uiautomator dump /sdcard/hongguo-after-consent.xml > /dev/null 2>&1 || true
@@ -129,6 +144,7 @@ has_player_ui() {
 
 sleep 18
 ensure_app_foreground || true
+accept_verified_consent
 adb exec-out screencap -p > "$outdir/home_after_68s.png"
 capture_ui home
 if ! has_player_ui "$outdir/home_ui.xml"; then
