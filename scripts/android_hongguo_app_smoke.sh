@@ -58,6 +58,10 @@ adb shell pm path "$package" | tee "$outdir/package_paths.txt"
 adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1 > "$outdir/launch.txt" 2>&1
 sleep 15
 adb exec-out screencap -p > "$outdir/launch.png"
+# Dismiss the Android notification prompt without granting access or signing in.
+adb shell input tap 540 1480
+sleep 18
+adb exec-out screencap -p > "$outdir/after_notification.png"
 adb shell dumpsys activity activities > "$outdir/activities.txt" 2>&1 || true
 adb logcat -d -t 800 -s AndroidRuntime:E ActivityTaskManager:I > "$outdir/launch_logcat.txt" 2>&1 || true
 if ! adb shell pm path "$package" | grep -q 'package:'; then
@@ -65,5 +69,6 @@ if ! adb shell pm path "$package" | grep -q 'package:'; then
   exit 1
 fi
 test -s "$outdir/launch.png"
+test -s "$outdir/after_notification.png"
 printf '\nRESULT: APP_INSTALLED_AND_LAUNCHED\n' | tee -a "$outdir/report.txt"
 echo "Hongguo native Android app installed and launched; emulator screenshot collected."
