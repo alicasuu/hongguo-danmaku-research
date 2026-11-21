@@ -156,6 +156,7 @@ def native_navigation_context(xml_text: str, label: str):
                    if node_text(n) == label and node_bounds(n) is not None), None)
     chain = []
     candidate = target
+    selected_bounds = None
     while candidate is not None and len(chain) < 8:
         bounds = node_bounds(candidate)
         chain.append({"bounds":candidate.get("bounds", ""),
@@ -165,7 +166,8 @@ def native_navigation_context(xml_text: str, label: str):
         if candidate is not target and candidate.get("clickable") == "true" and bounds:
             x0, y0, x1, y1 = bounds
             if x1-x0 <= 980 and y1-y0 <= 550:
-                return bounds, chain, []
+                selected_bounds = bounds
+                break
         candidate = parent_of.get(id(candidate))
     top_clickables = []
     for node in root.iter("node"):
@@ -175,7 +177,7 @@ def native_navigation_context(xml_text: str, label: str):
         top_clickables.append({"bounds":node.get("bounds", ""),
                                "class":node.get("class", ""),
                                "resource_id":node.get("resource-id", "")})
-    return (node_bounds(target) if target is not None else None), chain, top_clickables[:14]
+    return (selected_bounds or (node_bounds(target) if target is not None else None)), chain, top_clickables[:28]
 
 
 class Android:
@@ -326,7 +328,7 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
             target_bounds, native_chain, top_clickables = native_navigation_context(xml_text, label)
             print(json.dumps({"v1_native_navigation_target":label,
                               "safe_control_ancestors":native_chain[:7],
-                              "top_clickable_controls":top_clickables[:14]},
+                              "top_clickable_controls":top_clickables[:28]},
                              ensure_ascii=False), flush=True)
             x0, y0, x1, y1 = target_bounds if target_bounds else node_bounds(target)
             app.tap((x0+x1)//2, (y0+y1)//2)
