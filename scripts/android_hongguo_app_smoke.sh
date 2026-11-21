@@ -101,48 +101,77 @@ adb exec-out screencap -p > "$outdir/after_consent.png"
 timeout 20s adb shell uiautomator dump /sdcard/hongguo-after-consent.xml > /dev/null 2>&1 || true
 adb pull /sdcard/hongguo-after-consent.xml "$outdir/after_consent_ui.xml" > /dev/null 2>&1 || true
 
-# Explore only publicly visible app screens. No account login, no permission grants.
-sleep 50
+# The app has been seen auto-playing a drama after fresh consent, but a
+# separate run fell back to the Android launcher. Verify foreground state
+# before EVERY tap so a launcher search is never mistaken for Hongguo.
+is_app_foreground() {
+  adb shell dumpsys activity activities > "$outdir/foreground_check.txt" 2>&1 || true
+  grep -q 'topResumedActivity=.*com.phoenix.read/' "$outdir/foreground_check.txt"
+}
+ensure_app_foreground() {
+  for attempt in 1 2 3; do
+    if is_app_foreground; then return 0; fi
+    printf 'Reopening official app, attempt %s\\n' "$attempt" >> "$outdir/report.txt"
+    adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1 || true
+    sleep 12
+  done
+  is_app_foreground
+}
+capture_ui() {
+  local stage="$1"
+  timeout 20s adb shell uiautomator dump "/sdcard/hongguo-$stage.xml" > /dev/null 2>&1 || true
+  adb pull "/sdcard/hongguo-$stage.xml" "$outdir/${stage}_ui.xml" > /dev/null 2>&1 || true
+}
+has_player_ui() {
+  local path="$1"
+  [ -s "$path" ] && grep -Eq '全屏观看|content-desc="清屏"|text="第[0-9]+集"' "$path"
+}
+
+sleep 18
+ensure_app_foreground || true
 adb exec-out screencap -p > "$outdir/home_after_68s.png"
-timeout 25s adb shell uiautomator dump /sdcard/hongguo-home.xml > /dev/null 2>&1 || true
-adb pull /sdcard/hongguo-home.xml "$outdir/home_ui.xml" > /dev/null 2>&1 || true
-
-# Tap the Theater tab, which is visibly labeled 剧场 on the app's home screen.
-adb shell input tap 411 2270
-sleep 35
+capture_ui home
+if ! has_player_ui "$outdir/home_ui.xml"; then
+  # In a real home tab, 剧场 is the second bottom-navigation item.
+  if ensure_app_foreground; then
+    adb shell input tap 410 2270
+    sleep 14
+  fi
+fi
 adb exec-out screencap -p > "$outdir/theater.png"
-timeout 25s adb shell uiautomator dump /sdcard/hongguo-theater.xml > /dev/null 2>&1 || true
-adb pull /sdcard/hongguo-theater.xml "$outdir/theater_ui.xml" > /dev/null 2>&1 || true
-
-# Attempt to open the first visible public drama. Collect a short, sampled
-# screen sequence only; screenshots alone do not count as complete native danmaku.
-adb shell input tap 527 645
-sleep 25
+capture_ui theater
+if ! has_player_ui "$outdir/theater_ui.xml"; then
+  # Open the first visible drama card only while inside Hongguo.
+  if ensure_app_foreground; then
+    adb shell input tap 527 645
+    sleep 15
+  fi
+fi
+ensure_app_foreground || true
 adb exec-out screencap -p > "$outdir/video_attempt.png"
-for frame in $(seq -w 1 10); do
-  sleep 5
-  adb exec-out screencap -p > "$outdir/video_sample_$frame.png"
-done
-adb shell input tap 540 1200
-sleep 2
-adb exec-out screencap -p > "$outdir/video_controls.png"
-timeout 25s adb shell uiautomator dump /sdcard/hongguo-video.xml > /dev/null 2>&1 || true
-adb pull /sdcard/hongguo-video.xml "$outdir/video_ui.xml" > /dev/null 2>&1 || true
+capture_ui video
 
-# Inspect native player controls and the comments panel separately. Do not
-# post, like, follow, sign in, or treat ordinary comments as timed danmaku.
-adb shell input tap 1000 192
-sleep 3
-adb exec-out screencap -p > "$outdir/video_options.png"
-timeout 25s adb shell uiautomator dump /sdcard/hongguo-options.xml > /dev/null 2>&1 || true
-adb pull /sdcard/hongguo-options.xml "$outdir/video_options_ui.xml" > /dev/null 2>&1 || true
-adb shell input keyevent KEYCODE_BACK
-sleep 2
-adb shell input tap 998 1645
-sleep 5
-adb exec-out screencap -p > "$outdir/comments_panel.png"
-timeout 25s adb shell uiautomator dump /sdcard/hongguo-comments.xml > /dev/null 2>&1 || true
-adb pull /sdcard/hongguo-comments.xml "$outdir/comments_ui.xml" > /dev/null 2>&1 || true
+if has_player_ui "$outdir/video_ui.xml" && ensure_app_foreground; then
+  printf 'Video player UI confirmed; inspecting menu and short sequence\\n' >> "$outdir/report.txt"
+  adb shell input tap 540 1200
+  sleep 2
+  adb exec-out screencap -p > "$outdir/video_controls.png"
+  adb shell input tap 1000 192
+  sleep 3
+  adb exec-out screencap -p > "$outdir/video_options.png"
+  capture_ui video_options
+  # Keep this bounded and observational: no posting, likes, account login,
+  # or acceptance of any new agreement.
+  adb shell input keyevent KEYCODE_BACK
+  sleep 2
+  for frame in $(seq -w 1 10); do
+    if ! ensure_app_foreground; then break; fi
+    adb exec-out screencap -p > "$outdir/video_sample_$frame.png"
+    sleep 4
+  done
+else
+  printf 'Video player UI not confirmed in this attempt\\n' >> "$outdir/report.txt"
+fi
 adb shell dumpsys activity activities > "$outdir/activities.txt" 2>&1 || true
 adb logcat -d -t 800 -s AndroidRuntime:E ActivityTaskManager:I > "$outdir/launch_logcat.txt" 2>&1 || true
 if ! adb shell pm path "$package" | grep -q 'package:'; then
