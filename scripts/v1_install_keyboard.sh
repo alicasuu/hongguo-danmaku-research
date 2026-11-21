@@ -13,6 +13,15 @@ test "$(stat -c%s "$keyboard_apk")" -eq 18753
 printf '%s  %s\n' '41a8a0996d7397a2390d1ca16a75cb66c4a7bdaa89cf4e63600a4d3fb346fbbb' "$keyboard_apk" | sha256sum --check --status
 unzip -tqq "$keyboard_apk"
 adb install -r "$keyboard_apk"
+# On a newly booted API-35 emulator, PackageManager may need several
+# seconds to register a newly installed input-method service.
+for attempt in $(seq 1 20); do
+  if adb shell ime list -s 2>/dev/null | grep -F -q 'com.android.adbkeyboard/.AdbIME'; then
+    break
+  fi
+  sleep 2
+done
+adb shell ime list -s | grep -F 'com.android.adbkeyboard/.AdbIME'
 adb shell ime enable com.android.adbkeyboard/.AdbIME
 adb shell ime set com.android.adbkeyboard/.AdbIME
 adb shell ime list -s | grep 'com.android.adbkeyboard'
