@@ -61,9 +61,13 @@ class V1InitialTests(unittest.TestCase):
             {"text":"首页剧场", "confidence":75, "bbox":(15,2200,900,2280)},
             {"text":"找剧", "confidence":91, "bbox":(700,90,800,145)},
         ]
-        with patch('hongguo.v1_android.tesseract_tsv', return_value='tsv'):
-            with patch('hongguo.v1_android.group_tesseract_tsv', return_value=rows):
-                result = visible_navigation_ocr(Path('unused.png'))
+        from PIL import Image
+        with tempfile.TemporaryDirectory() as directory:
+            screen = Path(directory) / 'screen.png'
+            Image.new('RGB', (1080,2400), color='white').save(screen)
+            with patch('hongguo.v1_android.tesseract_tsv', return_value='tsv'):
+                with patch('hongguo.v1_android.group_tesseract_tsv', return_value=rows):
+                    result = visible_navigation_ocr(screen)
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 

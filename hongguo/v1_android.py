@@ -110,18 +110,35 @@ def search_result_ocr_candidates(image: Path, title: str, *, min_result_y=400):
 
 def visible_navigation_ocr(image: Path):
     """Find only known app-navigation labels, never print viewer comments."""
-    rows = group_tesseract_tsv(tesseract_tsv(image), confidence_floor=34, allow_short=True)
     labels = ("找剧", "搜剧", "剧场", "搜索", "首页", "同意并继续", "Got it")
     result = []
-    for row in rows:
-        normalized = re.sub(r"[，。\s:：、·—]+", "", row["text"])
-        for label in labels:
-            # A whole-row OCR box covering multiple tabs must never be used
-            # as the coordinate for one small tab.
-            if normalized == label:
-                x0, y0, x1, y1 = row["bbox"]
-                result.append({"label":label, "bbox":[x0,y0,x1,y1],
-                               "center":[(x0+x1)//2,(y0+y1)//2]})
+    # Running Tesseract on a 1080x2400 dynamic video often times out. Search
+    # only the top entry bar and bottom tab strip, preserving original pixels.
+    from PIL import Image
+    from tempfile import TemporaryDirectory
+    with Image.open(image) as full:
+        width, height = full.size
+        zones = [(0, min(height, 850)), (max(0, height-500), height)]
+        with TemporaryDirectory() as tmp:
+            for zone_index, (top, bottom) in enumerate(zones):
+                crop = Path(tmp) / f"nav{zone_index}.png"
+                full.crop((0, top, width, bottom)).save(crop)
+                try:
+                    rows = group_tesseract_tsv(tesseract_tsv(crop, timeout=12),
+                                               confidence_floor=34, allow_short=True)
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    continue
+                for row in rows:
+                    normalized = re.sub(r"[，。\s:：、·—]+", "", row["text"])
+                    for label in labels:
+                        # Whole-row boxes covering multiple tabs are unsafe.
+                        if normalized == label:
+                            x0, y0, x1, y1 = row["bbox"]
+                            result.append({"label":label,
+                                           "bbox":[x0,y0+top,x1,y1+top],
+                                           "center":[(x0+x1)//2,(y0+y1)//2+top]})
+                if any(item["label"] in ("找剧", "搜剧", "搜索") for item in result):
+                    break
     return result
 
 
