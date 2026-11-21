@@ -169,19 +169,38 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
     time.sleep(5)
     if not app.foreground():
         raise RuntimeError("Hongguo is not the active Android app")
-    # Android may reopen in video. Back until main search entry appears.
-    for attempt in range(5):
-        nodes = parse_ui(app.xml())
+    evidence.mkdir(parents=True, exist_ok=True)
+    # In the observed app, first launch may be an immersive *player*, not the
+    # searchable theater tab. Dismiss Android's verified full-screen tutorial.
+    intro_xml = app.xml()
+    if "Viewing full screen" in intro_xml and "Got it" in intro_xml:
+        app.click_label("Got it")
+        time.sleep(2)
+    # Use the known in-app theater tab before retrying search. Never use the
+    # ever-changing hot list to identify the frozen cohort.
+    navigation = ["search_icon", "theater_tab", "search_icon", "back", "theater_tab", "search_icon"]
+    for attempt, action in enumerate(navigation):
+        xml_text = app.xml()
+        nodes = parse_ui(xml_text)
         edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
         if edit:
             break
+        # Publish only navigation labels, not any onscreen audience messages.
+        safe_labels = {"搜索", "剧场", "排行榜", "首页", "短剧", "找剧", "搜剧", "同意并继续", "Got it"}
+        observed = sorted(set(node_text(n) for n in nodes if node_text(n) in safe_labels))
+        print(json.dumps({"v1_search_navigation_attempt":attempt, "action":action,
+                          "visible_navigation_labels":observed,
+                          "ui_nodes":len(nodes)}, ensure_ascii=False), flush=True)
         search = next((n for n in nodes if any(w in node_text(n) for w in ("搜索", "搜剧")) and node_bounds(n)), None)
         if search:
             x0, y0, x1, y1 = node_bounds(search)
             app.tap((x0+x1)//2, (y0+y1)//2)
-        elif attempt == 0:
-            # Native theater home search icon observed x1010,y185 on 1080x2400.
+        elif action == "search_icon":
+            # Theater search icon observed x1010,y185 on 1080x2400.
             app.tap(1010, 185)
+        elif action == "theater_tab":
+            # Theater bottom tab observed x410,y2270 on 1080x2400.
+            app.tap(410, 2270)
         else:
             app.back()
         time.sleep(4)
