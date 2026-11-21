@@ -1,3 +1,15 @@
+# Update 2026-11-21: native Android player danmaku visibly confirmed
+
+A fresh anonymous Android emulator running official-package `com.phoenix.read` (version 7.4.5.32) opened a genuine video in the native app, switched the actual player settings **弹幕** toggle ON, and recorded 35 sequential screenshots. This run shows moving, non-subtitle danmaku in episode 1 and episode 2 of the app-displayed title **全球死考：刚下刑场你让我去考试…**. Verified evidence: [GitHub Actions run #44887997373](https://github.com/alicasuu/hongguo-danmaku-research/actions/runs/44887997373), artifact `android-hongguo-app-smoke` ID `14701540834` (7-day retention), `video_danmaku_enabled.png` and `danmaku_frame_01.png`–`danmaku_frame_35.png`.
+
+**Important data distinction**: a manual review of the screenshots identified **24 distinct, complete on-screen text specimens** (deduplicated by displayed wording). This confirms actual **native player floating danmaku**, unlike the website's review-to-overlay converter discussed below. It does **not** mean 24 source-identified message events: message IDs, original video offsets, platform posting times and verified complete historical pools are still absent. Some repeated identical strings may represent multiple messages; some displayed items may be historical replay rather than newly posted live. Do not place these screenshot-only specimens into the strict native-message table that requires source IDs and offsets.
+
+**Current run counts**: 2 episodes observed in playback; **0 complete episode video files**; 35 screenshots; 24 on-screen text specimens; **0 fully qualified timestamped/ID-backed native danmaku records**; **0 new source-validated per-episode engagement snapshots**; **0 ordinary comments/replies downloaded**; **0 complete 10-drama catalog**. The target ten by **play count** has not been independently established. A popular/hot ranking is not equivalent to play-count ranking.
+
+The earlier statements of zero *source-native structured records* remain correct for the strict-ID/offset path, but they no longer describe all native-app-visible danmaku observations.
+
+---
+
 # Follow-up: reviewed repositories and repeated unsigned test
 
 The 2026-11-09 Pacific follow-up reviewed `zfdang/hongguo-open-player`, `loocor/redapple`, and `zhangbaio/hongguo` at pinned revisions. See [repository comparison](REPOSITORY_COMPARISON.md) for the evidence and corrected pagination semantics.
