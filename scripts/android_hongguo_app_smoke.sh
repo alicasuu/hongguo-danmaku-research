@@ -58,9 +58,30 @@ adb shell pm path "$package" | tee "$outdir/package_paths.txt"
 adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1 > "$outdir/launch.txt" 2>&1
 sleep 15
 adb exec-out screencap -p > "$outdir/launch.png"
-# Dismiss the Android notification prompt without granting access or signing in.
-adb shell input tap 540 1480
-sleep 18
+
+# Fresh hosted Android devices sometimes show a system launcher ANR *above*
+# the app's notification dialog. Dismiss both system overlays in order,
+# using the observed UI hierarchy instead of tapping blindly.
+dismiss_system_overlays() {
+  for iteration in $(seq 1 8); do
+    timeout 20s adb shell uiautomator dump /sdcard/hongguo-system.xml > /dev/null 2>&1 || true
+    hierarchy="$(adb shell cat /sdcard/hongguo-system.xml 2>/dev/null || true)"
+    if [[ "$hierarchy" == *"isn't responding"* ]]; then
+      printf 'Dialog %s: dismiss system launcher ANR\\n' "$iteration" >> "$outdir/report.txt"
+      adb shell input tap 500 1230
+      sleep 7
+    elif [[ "$hierarchy" == *"permission_deny_button"* ]]; then
+      printf 'Dialog %s: deny optional notifications\\n' "$iteration" >> "$outdir/report.txt"
+      adb shell input tap 540 1470
+      sleep 6
+    else
+      printf 'Dialog %s: no blocking system overlay\\n' "$iteration" >> "$outdir/report.txt"
+      break
+    fi
+  done
+}
+dismiss_system_overlays
+sleep 12
 adb exec-out screencap -p > "$outdir/after_notification.png"
 
 # Explore only publicly visible app screens. No account login, no permission grants.
