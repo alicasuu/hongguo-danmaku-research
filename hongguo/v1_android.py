@@ -204,7 +204,9 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
         print(json.dumps({"v1_search_navigation_attempt":attempt, "action":action,
                           "visible_navigation_labels":observed,
                           "search_controls":search_controls, "ui_nodes":len(nodes)}, ensure_ascii=False), flush=True)
-        search = next((n for n in nodes if any(w in node_text(n) for w in ("搜索", "搜剧")) and node_bounds(n)), None)
+        # Native theater exposes its search entry as "找剧" on some launches.
+        # It is distinct from the right-hand "搜索" submit button.
+        search = next((n for n in nodes if any(w in node_text(n) for w in ("找剧", "搜剧", "搜索")) and node_bounds(n)), None)
         if search:
             x0, y0, x1, y1 = node_bounds(search)
             app.tap((x0+x1)//2, (y0+y1)//2)
