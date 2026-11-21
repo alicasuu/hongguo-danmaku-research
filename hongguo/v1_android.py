@@ -108,6 +108,23 @@ def search_result_ocr_candidates(image: Path, title: str, *, min_result_y=400):
     return result
 
 
+def visible_navigation_ocr(image: Path):
+    """Find only known app-navigation labels, never print viewer comments."""
+    rows = group_tesseract_tsv(tesseract_tsv(image), confidence_floor=34)
+    labels = ("找剧", "搜剧", "剧场", "搜索", "首页", "同意并继续", "Got it")
+    result = []
+    for row in rows:
+        normalized = re.sub(r"[，。\s:：、·—]+", "", row["text"])
+        for label in labels:
+            # A whole-row OCR box covering multiple tabs must never be used
+            # as the coordinate for one small tab.
+            if normalized == label:
+                x0, y0, x1, y1 = row["bbox"]
+                result.append({"label":label, "bbox":[x0,y0,x1,y1],
+                               "center":[(x0+x1)//2,(y0+y1)//2]})
+    return result
+
+
 class Android:
     def __init__(self, *, adb="adb", ime=True):
         self.adb = adb
@@ -186,6 +203,12 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
             time.sleep(8)
         xml_text = app.xml()
         nodes = parse_ui(xml_text)
+        screenshot = evidence / f"search_nav_{attempt:02d}.png"
+        try:
+            app.screenshot(screenshot)
+            visual_navigation = visible_navigation_ocr(screenshot)
+        except Exception:
+            visual_navigation = []
         if "Viewing full screen" in xml_text and "Got it" in xml_text:
             app.click_label("Got it")
             time.sleep(2)
@@ -202,6 +225,13 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                 # Focus the left search bar *before* pressing this button.
                 custom_search = True
                 break
+        # UIAutomator sometimes yields zero nodes in Hongguo's immersive UI;
+        # only known navigation labels seen on the screen are actionable.
+        visual_submit = next((v for v in visual_navigation if v["label"] == "搜索"
+                              and v["center"][0] > 750 and v["center"][1] < 450), None)
+        if visual_submit:
+            custom_search = True
+            break
         # Publish only navigation labels, not any onscreen audience messages.
         safe_labels = {"搜索", "剧场", "排行榜", "首页", "短剧", "找剧", "搜剧", "同意并继续", "Got it"}
         observed = sorted(set(node_text(n) for n in nodes if node_text(n) in safe_labels))
@@ -210,17 +240,26 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                            for n in nodes if node_text(n) == "搜索"][:3]
         find_drama = matched_node(nodes, "找剧") or matched_node(nodes, "搜剧")
         theater = matched_node(nodes, "剧场")
+        visual_find = next((v for v in visual_navigation if v["label"] in ("找剧", "搜剧")
+                            and v["center"][1] < 950), None)
+        visual_theater = next((v for v in visual_navigation if v["label"] == "剧场"
+                               and v["center"][1] > 1600), None)
         action = ("find_drama" if find_drama else "theater_tab" if theater else
+                  "ocr_find_drama" if visual_find else "ocr_theater_tab" if visual_theater else
                   "wait_for_native_ui" if attempt < 2 else "back_to_home" if attempt % 3 == 2 else
                   "theater_coordinate_fallback")
         print(json.dumps({"v1_search_navigation_attempt":attempt, "action":action,
                           "visible_navigation_labels":observed,
+                          "visual_navigation":visual_navigation[:8],
                           "search_controls":search_controls, "ui_nodes":len(nodes),
                           "app_foreground":app.foreground()}, ensure_ascii=False), flush=True)
         if find_drama or theater:
             target = find_drama or theater
             x0, y0, x1, y1 = node_bounds(target)
             app.tap((x0+x1)//2, (y0+y1)//2)
+        elif visual_find or visual_theater:
+            target = visual_find or visual_theater
+            app.tap(*target["center"])
         elif action == "back_to_home":
             app.back()
         elif action == "theater_coordinate_fallback":

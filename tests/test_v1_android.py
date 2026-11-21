@@ -54,6 +54,19 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(len(result),1)
         self.assertEqual(result[0]['center'], (175,1780))
 
+    def test_navigation_ocr_never_taps_combined_tab_row(self):
+        from unittest.mock import patch
+        from hongguo.v1_android import visible_navigation_ocr
+        rows = [
+            {"text":"首页剧场", "confidence":75, "bbox":(15,2200,900,2280)},
+            {"text":"找剧", "confidence":91, "bbox":(700,90,800,145)},
+        ]
+        with patch('hongguo.v1_android.tesseract_tsv', return_value='tsv'):
+            with patch('hongguo.v1_android.group_tesseract_tsv', return_value=rows):
+                result = visible_navigation_ocr(Path('unused.png'))
+        self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
+                                   "center":[750,117]}])
+
     def test_metrics_count_scaling(self):
         self.assertEqual(chinese_number("12.5万"), "125000")
         self.assertEqual(chinese_number("隐藏"), "")
