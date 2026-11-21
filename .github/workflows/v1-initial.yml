@@ -30,7 +30,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: hongguo-v1-single-pass
+  group: hongguo-v1-single-pass-native-leaf-control
   cancel-in-progress: false
 
 jobs:
