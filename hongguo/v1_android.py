@@ -188,9 +188,12 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
         # Publish only navigation labels, not any onscreen audience messages.
         safe_labels = {"搜索", "剧场", "排行榜", "首页", "短剧", "找剧", "搜剧", "同意并继续", "Got it"}
         observed = sorted(set(node_text(n) for n in nodes if node_text(n) in safe_labels))
+        search_controls = [{"class":n.get("class", ""), "bounds":n.get("bounds", ""),
+                            "resource_id":n.get("resource-id", ""), "clickable":n.get("clickable", "")}
+                           for n in nodes if node_text(n) == "搜索"][:3]
         print(json.dumps({"v1_search_navigation_attempt":attempt, "action":action,
                           "visible_navigation_labels":observed,
-                          "ui_nodes":len(nodes)}, ensure_ascii=False), flush=True)
+                          "search_controls":search_controls, "ui_nodes":len(nodes)}, ensure_ascii=False), flush=True)
         search = next((n for n in nodes if any(w in node_text(n) for w in ("搜索", "搜剧")) and node_bounds(n)), None)
         if search:
             x0, y0, x1, y1 = node_bounds(search)
@@ -205,15 +208,35 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
             app.back()
         time.sleep(4)
     else:
-        raise RuntimeError("Could not locate native search input")
+        # Hongguo sometimes renders the top search field as a custom native
+        # control instead of an accessible Android EditText. When the official
+        # search screen is independently visible, focus its left input field.
+        nodes = parse_ui(app.xml())
+        if not matched_node(nodes, "搜索"):
+            raise RuntimeError("Could not locate native search screen or input")
     nodes = parse_ui(app.xml())
     edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
     if edit is None:
-        raise RuntimeError("Search input disappeared")
-    x0, y0, x1, y1 = node_bounds(edit)
-    app.tap((x0+x1)//2, (y0+y1)//2)
+        # Search submit label is normally at right; the left half of its top
+        # bar hosts the custom text entry. Verify the echoed query below.
+        app.tap(350, 185)
+    else:
+        x0, y0, x1, y1 = node_bounds(edit)
+        app.tap((x0+x1)//2, (y0+y1)//2)
     app.enter_title(title)
     time.sleep(2)
+    if edit is None:
+        input_xml = app.xml()
+        app.screenshot(evidence / "search_input.png")
+        visible_rows = group_tesseract_tsv(tesseract_tsv(evidence / "search_input.png"), confidence_floor=30)
+        title_prefix = re.sub(r"[，。\s:：、·—]+", "", title)[:6]
+        echo_visible = title in input_xml or any(
+            title_prefix in re.sub(r"[，。\s:：、·—]+", "", row["text"]) and row["bbox"][1] < 450
+            for row in visible_rows)
+        print(json.dumps({"v1_custom_search_input":"focused_top_bar", "query_echo_verified":echo_visible},
+                         ensure_ascii=False), flush=True)
+        if not echo_visible:
+            raise RuntimeError("Custom search field did not visibly echo exact frozen title")
     app.click_label("搜索", exact=True) or app.run("shell", "input", "keyevent", "KEYCODE_ENTER")
     time.sleep(wait)
     result_xml = app.xml()
