@@ -71,6 +71,16 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 
+    def test_clickable_ancestor_is_preferred_to_nonclickable_label(self):
+        from hongguo.v1_android import native_navigation_context
+        xml = ('<hierarchy><node clickable="true" bounds="[0,240][600,350]">'
+               '<node clickable="false" text="找剧" bounds="[32,263][126,332]"/>'
+               '</node></hierarchy>')
+        bounds, chain, candidates = native_navigation_context(xml, "找剧")
+        self.assertEqual(bounds, (0,240,600,350))
+        self.assertEqual(len(chain), 2)
+        self.assertEqual(candidates, [])
+
     def test_zero_area_xml_controls_are_not_tapped(self):
         xml = ('<hierarchy><node text="找剧" bounds="[0,0][0,0]"/>'
                '<node text="找剧" bounds="[400,200][600,260]"/></hierarchy>')

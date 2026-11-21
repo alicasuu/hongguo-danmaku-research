@@ -144,6 +144,40 @@ def visible_navigation_ocr(image: Path):
     return result
 
 
+
+def native_navigation_context(xml_text: str, label: str):
+    """Return a safe tap target plus non-sensitive UI control metadata."""
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return None, [], []
+    parent_of = {id(child): parent for parent in root.iter() for child in parent}
+    target = next((n for n in root.iter("node")
+                   if node_text(n) == label and node_bounds(n) is not None), None)
+    chain = []
+    candidate = target
+    while candidate is not None and len(chain) < 8:
+        bounds = node_bounds(candidate)
+        chain.append({"bounds":candidate.get("bounds", ""),
+                      "clickable":candidate.get("clickable", ""),
+                      "class":candidate.get("class", ""),
+                      "resource_id":candidate.get("resource-id", "")})
+        if candidate is not target and candidate.get("clickable") == "true" and bounds:
+            x0, y0, x1, y1 = bounds
+            if x1-x0 <= 980 and y1-y0 <= 550:
+                return bounds, chain, []
+        candidate = parent_of.get(id(candidate))
+    top_clickables = []
+    for node in root.iter("node"):
+        bounds = node_bounds(node)
+        if not bounds or bounds[1] > 480 or node.get("clickable") != "true":
+            continue
+        top_clickables.append({"bounds":node.get("bounds", ""),
+                               "class":node.get("class", ""),
+                               "resource_id":node.get("resource-id", "")})
+    return (node_bounds(target) if target is not None else None), chain, top_clickables[:14]
+
+
 class Android:
     def __init__(self, *, adb="adb", ime=True):
         self.adb = adb
@@ -288,7 +322,13 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                           "app_foreground":app.foreground()}, ensure_ascii=False), flush=True)
         if find_drama is not None or theater is not None:
             target = find_drama if find_drama is not None else theater
-            x0, y0, x1, y1 = node_bounds(target)
+            label = node_text(target)
+            target_bounds, native_chain, top_clickables = native_navigation_context(xml_text, label)
+            print(json.dumps({"v1_native_navigation_target":label,
+                              "safe_control_ancestors":native_chain[:7],
+                              "top_clickable_controls":top_clickables[:14]},
+                             ensure_ascii=False), flush=True)
+            x0, y0, x1, y1 = target_bounds if target_bounds else node_bounds(target)
             app.tap((x0+x1)//2, (y0+y1)//2)
         elif visual_find or visual_theater:
             target = visual_find or visual_theater
