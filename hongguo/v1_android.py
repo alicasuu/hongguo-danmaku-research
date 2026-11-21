@@ -176,13 +176,20 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
     if "Viewing full screen" in intro_xml and "Got it" in intro_xml:
         app.click_label("Got it")
         time.sleep(2)
-    # Use the known in-app theater tab before retrying search. Never use the
-    # ever-changing hot list to identify the frozen cohort.
-    navigation = ["search_icon", "theater_tab", "search_icon", "back", "theater_tab", "search_icon"]
+    # Navigate by currently observed controls, since the freshly installed app
+    # may launch on different tabs or an immersive video between CI runs.
     custom_search = False
-    for attempt, action in enumerate(navigation):
+    for attempt in range(12):
+        if not app.foreground():
+            app.run("shell", "monkey", "-p", "com.phoenix.read", "-c",
+                    "android.intent.category.LAUNCHER", "1", check=False)
+            time.sleep(8)
         xml_text = app.xml()
         nodes = parse_ui(xml_text)
+        if "Viewing full screen" in xml_text and "Got it" in xml_text:
+            app.click_label("Got it")
+            time.sleep(2)
+            continue
         edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
         if edit:
             break
@@ -201,32 +208,38 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
         search_controls = [{"class":n.get("class", ""), "bounds":n.get("bounds", ""),
                             "resource_id":n.get("resource-id", ""), "clickable":n.get("clickable", "")}
                            for n in nodes if node_text(n) == "搜索"][:3]
+        find_drama = matched_node(nodes, "找剧") or matched_node(nodes, "搜剧")
+        theater = matched_node(nodes, "剧场")
+        action = ("find_drama" if find_drama else "theater_tab" if theater else
+                  "wait_for_native_ui" if attempt < 2 else "back_to_home" if attempt % 3 == 2 else
+                  "theater_coordinate_fallback")
         print(json.dumps({"v1_search_navigation_attempt":attempt, "action":action,
                           "visible_navigation_labels":observed,
-                          "search_controls":search_controls, "ui_nodes":len(nodes)}, ensure_ascii=False), flush=True)
-        # Native theater exposes its search entry as "找剧" on some launches.
-        # It is distinct from the right-hand "搜索" submit button.
-        search = next((n for n in nodes if any(w in node_text(n) for w in ("找剧", "搜剧", "搜索")) and node_bounds(n)), None)
-        if search:
-            x0, y0, x1, y1 = node_bounds(search)
+                          "search_controls":search_controls, "ui_nodes":len(nodes),
+                          "app_foreground":app.foreground()}, ensure_ascii=False), flush=True)
+        if find_drama or theater:
+            target = find_drama or theater
+            x0, y0, x1, y1 = node_bounds(target)
             app.tap((x0+x1)//2, (y0+y1)//2)
-        elif action == "search_icon":
-            # Theater search icon observed x1010,y185 on 1080x2400.
-            app.tap(1010, 185)
-        elif action == "theater_tab":
-            # Theater bottom tab observed x410,y2270 on 1080x2400.
-            app.tap(410, 2270)
-        else:
+        elif action == "back_to_home":
             app.back()
-        time.sleep(4)
+        elif action == "theater_coordinate_fallback":
+            app.tap(410, 2270)
+        time.sleep(5)
     else:
-        # Hongguo sometimes renders the top search field as a custom native
-        # control instead of an accessible Android EditText. When the official
-        # search screen is independently visible, focus its left input field.
-        nodes = parse_ui(app.xml())
-        if not matched_node(nodes, "搜索"):
-            raise RuntimeError("Could not locate native search screen or input")
-        custom_search = True
+        # Keep private evidence for precise offline debugging; no screenshot
+        # or raw UI text is exported to public repository or Actions artifacts.
+        (evidence / "search_navigation_failure.xml").write_text(app.xml(), encoding="utf-8")
+        app.screenshot(evidence / "search_navigation_failure.png")
+        try:
+            from PIL import Image
+            with Image.open(evidence / "search_navigation_failure.png") as screenshot:
+                screenshot.thumbnail((540, 1200))
+                screenshot.convert("RGB").save(evidence / "search_navigation_failure_preview.jpg",
+                                               "JPEG", quality=55, optimize=True)
+        except Exception:
+            pass
+        raise RuntimeError("Native Find Drama/search field unavailable after 12 verified navigation checks")
     nodes = parse_ui(app.xml())
     edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
     if edit is None and custom_search:
