@@ -109,7 +109,7 @@ def search_result_ocr_candidates(image: Path, title: str, *, min_result_y=400):
     """
     lines = group_tesseract_tsv(tesseract_tsv(image), confidence_floor=30)
     key = re.sub(r"[，。\s:：、·—]+", "", title)
-    prefix = key[:max(4, min(len(key), 6))]
+    prefix = key[:4]  # OCR can split a long Chinese title into several visual runs.
     result = []
     for row in lines:
         x0, y0, x1, y1 = row["bbox"]

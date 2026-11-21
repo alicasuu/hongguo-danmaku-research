@@ -54,6 +54,15 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(len(result),1)
         self.assertEqual(result[0]['center'], (175,1780))
 
+    def test_search_card_accepts_partial_independent_title_ocr(self):
+        from unittest.mock import patch
+        from hongguo.v1_android import search_result_ocr_candidates
+        rows = [{"text":"减肥系男神", "confidence":77, "bbox":(40,900,340,956)}]
+        with patch('hongguo.v1_android.tesseract_tsv', return_value='stub'):
+            with patch('hongguo.v1_android.group_tesseract_tsv', return_value=rows):
+                candidates = search_result_ocr_candidates(Path('unused.png'), '减肥系男神，减一斤一个亿')
+        self.assertEqual(len(candidates), 1)
+
     def test_navigation_ocr_never_taps_combined_tab_row(self):
         from unittest.mock import patch
         from hongguo.v1_android import visible_navigation_ocr
