@@ -7,7 +7,10 @@ trap 'rm -f "$keyboard_apk"' EXIT
 curl --fail --location --silent --show-error --retry 3 --max-time 90 \
   'https://github.com/senzhk/ADBKeyBoard/releases/download/v2.5-dev/keyboardservice-debug.apk' \
   -o "$keyboard_apk"
-test "$(stat -c%s "$keyboard_apk")" -gt 25000
+# Official v2.5-dev GitHub release asset is 18,753 bytes. Verify its exact
+# published SHA-256, rather than rejecting it using an incorrect size floor.
+test "$(stat -c%s "$keyboard_apk")" -eq 18753
+printf '%s  %s\n' '41a8a0996d7397a2390d1ca16a75cb66c4a7bdaa89cf4e63600a4d3fb346fbbb' "$keyboard_apk" | sha256sum --check --status
 unzip -tqq "$keyboard_apk"
 adb install -r "$keyboard_apk"
 adb shell ime enable com.android.adbkeyboard/.AdbIME
