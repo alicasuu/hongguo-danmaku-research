@@ -304,7 +304,10 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                               "bounds":list(search_icon_bounds)}, ensure_ascii=False), flush=True)
             app.tap((x0+x1)//2, (y0+y1)//2)
             time.sleep(3)
-            continue
+            # The resulting search screen is often canvas-rendered and has
+            # no EditText nodes; its top-left query bar is handled below.
+            custom_search = True
+            break
         # UIAutomator sometimes yields zero nodes in Hongguo's immersive UI;
         # only known navigation labels seen on the screen are actionable.
         visual_submit = next((v for v in visual_navigation if v["label"] == "搜索"
