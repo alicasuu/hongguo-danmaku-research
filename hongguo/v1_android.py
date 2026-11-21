@@ -82,6 +82,16 @@ def matched_node(nodes, label, *, exact=True):
     return next((n for n in matches if node_bounds(n)), None)
 
 
+def native_search_icon_bounds(xml_text: str):
+    """Target only Hongguo's observed native magnifier control."""
+    for node in parse_ui(xml_text):
+        if node.get("resource-id", "").endswith(":id/search_image_icon_container"):
+            bounds = node_bounds(node)
+            if bounds is not None:
+                return bounds
+    return None
+
+
 def chinese_number(raw):
     raw = raw.replace(",", "").strip()
     match = re.search(r"([\d.]+)\s*([万亿]?)", raw)
@@ -285,6 +295,16 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                 # Focus the left search bar *before* pressing this button.
                 custom_search = True
                 break
+        # Verified in live Android UI: this toolbar child is the actual
+        # search magnifier. "找剧" below it is only a theater category tab.
+        search_icon_bounds = native_search_icon_bounds(xml_text)
+        if search_icon_bounds is not None:
+            x0, y0, x1, y1 = search_icon_bounds
+            print(json.dumps({"v1_native_search_icon":"search_image_icon_container",
+                              "bounds":list(search_icon_bounds)}, ensure_ascii=False), flush=True)
+            app.tap((x0+x1)//2, (y0+y1)//2)
+            time.sleep(3)
+            continue
         # UIAutomator sometimes yields zero nodes in Hongguo's immersive UI;
         # only known navigation labels seen on the screen are actionable.
         visual_submit = next((v for v in visual_navigation if v["label"] == "搜索"

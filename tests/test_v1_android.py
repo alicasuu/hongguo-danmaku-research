@@ -71,6 +71,13 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 
+    def test_real_native_search_icon_is_selected_by_resource_id(self):
+        from hongguo.v1_android import native_search_icon_bounds
+        xml = ('<hierarchy><node text="找剧" bounds="[32,263][126,332]"/>'
+               '<node resource-id="com.phoenix.read:id/search_image_icon_container" '
+               'clickable="true" bounds="[735,136][890,231]"/></hierarchy>')
+        self.assertEqual(native_search_icon_bounds(xml), (735,136,890,231))
+
     def test_clickable_ancestor_is_preferred_to_nonclickable_label(self):
         from hongguo.v1_android import native_navigation_context
         xml = ('<hierarchy><node clickable="true" bounds="[0,240][600,350]">'
