@@ -157,6 +157,24 @@ if ! has_player_ui "$outdir/home_ui.xml"; then
 fi
 adb exec-out screencap -p > "$outdir/theater.png"
 capture_ui theater
+# Theater UI exposes a native ranking entry (observed text=排行榜 at
+# bounds [376,380][484,433]). Preserve the ranking's raw visual labels
+# before selecting a video. Its heat/popularity metric must not be
+# mislabeled as a verified total-view count.
+if ensure_app_foreground && [ -s "$outdir/theater_ui.xml" ] && grep -q 'text="排行榜"' "$outdir/theater_ui.xml"; then
+  adb shell input tap 430 406
+  sleep 8
+  adb exec-out screencap -p > "$outdir/ranking_top.png"
+  capture_ui ranking_top
+  adb shell input swipe 520 1800 520 800 450
+  sleep 3
+  adb exec-out screencap -p > "$outdir/ranking_scroll_1.png"
+  adb shell input swipe 520 1800 520 800 450
+  sleep 3
+  adb exec-out screencap -p > "$outdir/ranking_scroll_2.png"
+  adb shell input keyevent KEYCODE_BACK
+  sleep 5
+fi
 if ! has_player_ui "$outdir/theater_ui.xml"; then
   # Open the first visible drama card only while inside Hongguo.
   if ensure_app_foreground; then
