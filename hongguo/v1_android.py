@@ -179,12 +179,22 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
     # Use the known in-app theater tab before retrying search. Never use the
     # ever-changing hot list to identify the frozen cohort.
     navigation = ["search_icon", "theater_tab", "search_icon", "back", "theater_tab", "search_icon"]
+    custom_search = False
     for attempt, action in enumerate(navigation):
         xml_text = app.xml()
         nodes = parse_ui(xml_text)
         edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
         if edit:
             break
+        submit = matched_node(nodes, "搜索")
+        if submit:
+            sx0, sy0, sx1, sy1 = node_bounds(submit)
+            if sx0 > 700 and sy1 < 450:
+                # Actual observed search screen: the right-side TextView
+                # "搜索" at [954,171][1038,233] is SUBMIT, not text entry.
+                # Focus the left search bar *before* pressing this button.
+                custom_search = True
+                break
         # Publish only navigation labels, not any onscreen audience messages.
         safe_labels = {"搜索", "剧场", "排行榜", "首页", "短剧", "找剧", "搜剧", "同意并继续", "Got it"}
         observed = sorted(set(node_text(n) for n in nodes if node_text(n) in safe_labels))
@@ -214,15 +224,18 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
         nodes = parse_ui(app.xml())
         if not matched_node(nodes, "搜索"):
             raise RuntimeError("Could not locate native search screen or input")
+        custom_search = True
     nodes = parse_ui(app.xml())
     edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
-    if edit is None:
+    if edit is None and custom_search:
         # Search submit label is normally at right; the left half of its top
         # bar hosts the custom text entry. Verify the echoed query below.
         app.tap(350, 185)
-    else:
+    elif edit is not None:
         x0, y0, x1, y1 = node_bounds(edit)
         app.tap((x0+x1)//2, (y0+y1)//2)
+    else:
+        raise RuntimeError("Search input disappeared before typing")
     app.enter_title(title)
     time.sleep(2)
     if edit is None:
