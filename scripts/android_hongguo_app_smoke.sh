@@ -98,7 +98,8 @@ accept_verified_consent() {
       break
     fi
     button_node="$(printf '%s' "$consent_ui" | grep -o 'text="同意并继续"[^>]*' | head -1)"
-    if [[ "$button_node" =~ bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]" ]]; then
+    local bound_pattern='bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]"'
+    if [[ "$button_node" =~ $bound_pattern ]]; then
       local center_x=$(( (BASH_REMATCH[1] + BASH_REMATCH[3]) / 2 ))
       local center_y=$(( (BASH_REMATCH[2] + BASH_REMATCH[4]) / 2 ))
       printf 'First-run notice: verified button bounds; accepting at (%s,%s)\\n' "$center_x" "$center_y" >> "$outdir/report.txt"
