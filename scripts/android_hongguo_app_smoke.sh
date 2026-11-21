@@ -81,8 +81,25 @@ dismiss_system_overlays() {
   done
 }
 dismiss_system_overlays
-sleep 12
+sleep 5
 adb exec-out screencap -p > "$outdir/after_notification.png"
+
+# This fresh, isolated emulator is never signed in. The user explicitly
+# approved accepting Hongguo's first-run agreement/privacy notice for this
+# research session on 2026-11-21. Only accept after verifying exact UI labels.
+timeout 20s adb shell uiautomator dump /sdcard/hongguo-consent.xml > /dev/null 2>&1 || true
+consent_ui="$(adb shell cat /sdcard/hongguo-consent.xml 2>/dev/null || true)"
+if [[ "$consent_ui" == *"欢迎使用红果免费短剧"* && "$consent_ui" == *"同意并继续"* ]]; then
+  printf 'First-run notice: user-authorized agreement accepted\\n' >> "$outdir/report.txt"
+  adb shell input tap 540 1470
+  sleep 10
+else
+  printf 'First-run notice: absent or unrecognized; no blind consent tap\\n' >> "$outdir/report.txt"
+fi
+dismiss_system_overlays
+adb exec-out screencap -p > "$outdir/after_consent.png"
+timeout 20s adb shell uiautomator dump /sdcard/hongguo-after-consent.xml > /dev/null 2>&1 || true
+adb pull /sdcard/hongguo-after-consent.xml "$outdir/after_consent_ui.xml" > /dev/null 2>&1 || true
 
 # Explore only publicly visible app screens. No account login, no permission grants.
 sleep 50
