@@ -71,6 +71,14 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 
+    def test_android_xml_dump_timeout_returns_empty_not_stale(self):
+        import subprocess
+        from unittest.mock import patch
+        from hongguo.v1_android import Android
+        app = Android(ime=False)
+        with patch.object(app, "run", side_effect=subprocess.TimeoutExpired("adb", 18)):
+            self.assertEqual(app.xml(), "")
+
     def test_real_native_search_icon_is_selected_by_resource_id(self):
         from hongguo.v1_android import native_search_icon_bounds
         xml = ('<hierarchy><node text="找剧" bounds="[32,263][126,332]"/>'

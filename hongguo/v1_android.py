@@ -214,8 +214,14 @@ class Android:
 
     def xml(self):
         path = "/sdcard/window-v1.xml"
-        self.run("shell", "uiautomator", "dump", path, timeout=35, check=False)
-        return self.run("shell", "cat", path, timeout=20, check=False)
+        try:
+            self.run("shell", "uiautomator", "dump", path, timeout=18, check=False)
+            return self.run("shell", "cat", path, timeout=10, check=False)
+        except (subprocess.TimeoutExpired, RuntimeError):
+            # Native video/consent overlays can block accessibility dumps.
+            # Return no nodes and let screenshot OCR navigate the current UI;
+            # never reuse stale XML from an earlier screen.
+            return ""
 
     def screenshot(self, path: Path):
         blob = self.run("exec-out", "screencap", "-p", timeout=20, binary=True)
