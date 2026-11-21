@@ -138,6 +138,26 @@ capture_ui() {
   timeout 20s adb shell uiautomator dump "/sdcard/hongguo-$stage.xml" > /dev/null 2>&1 || true
   adb pull "/sdcard/hongguo-$stage.xml" "$outdir/${stage}_ui.xml" > /dev/null 2>&1 || true
 }
+# On Android 35 the first immersive player entry displays a system-level
+# "Viewing full screen" tutorial. Its overlay can cover ALL danmaku and
+# intercept Back presses. Dismiss only the verified android:id/ok button.
+dismiss_verified_immersive_tip() {
+  capture_ui immersive_before
+  local xml="${outdir}/immersive_before_ui.xml"
+  if [ ! -s "$xml" ] || ! grep -q 'text="Viewing full screen"' "$xml"; then
+    return 0
+  fi
+  local button_node bounds_pattern='bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]"'
+  button_node="$(grep -o 'text="Got it"[^>]*resource-id="android:id/ok"[^>]*' "$xml" | head -1 || true)"
+  if [[ "$button_node" =~ $bounds_pattern ]]; then
+    local x=$(( (BASH_REMATCH[1] + BASH_REMATCH[3]) / 2 ))
+    local y=$(( (BASH_REMATCH[2] + BASH_REMATCH[4]) / 2 ))
+    printf 'Verified immersive tip: dismissing android:id/ok at (%s,%s)\n' "$x" "$y" >> "$outdir/report.txt"
+    adb shell input tap "$x" "$y"
+    sleep 2
+    capture_ui immersive_after
+  fi
+}
 has_player_ui() {
   local path="$1"
   [ -s "$path" ] && grep -Eq '全屏观看|content-desc="清屏"|text="第[0-9]+集"' "$path"
@@ -185,6 +205,7 @@ fi
 ensure_app_foreground || true
 adb exec-out screencap -p > "$outdir/video_attempt.png"
 capture_ui video
+dismiss_verified_immersive_tip
 
 if ensure_app_foreground; then
   # Some video-heavy app screens make uiautomator dump time out even though
@@ -240,6 +261,7 @@ fi
 # No private app storage, bypassed requests or credentials are accessed.
 "$aapt" dump xmltree "$apk" AndroidManifest.xml > "$outdir/manifest_intent_filters.txt" 2>&1 || true
 adb shell dumpsys package "$package" > "$outdir/package_intent_filters.txt" 2>&1 || true
+dismiss_verified_immersive_tip
 for back_step in 1 2 3; do
   adb shell input keyevent KEYCODE_BACK
   sleep 5
@@ -248,8 +270,8 @@ for back_step in 1 2 3; do
 done
 # Resolve an ordinary deep link in the official package only if Android itself
 # declares a matching VIEW intent filter. A failed resolution is a recorded result.
-adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE \\
-  -d 'https://hongguoduanju.com/player/7706825646403488793' \\
+adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE \
+  -d 'https://hongguoduanju.com/player/7706825646403488793' \
   -p "$package" > "$outdir/deeplink_resolution.txt" 2>&1 || true
 sleep 12
 adb exec-out screencap -p > "$outdir/deeplink_result.png"
