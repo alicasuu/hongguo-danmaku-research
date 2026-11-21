@@ -245,7 +245,7 @@ if ensure_app_foreground; then
   # observation times, NOT the original video's playback offsets.
   printf 'frame_index\\tcaptured_at_utc\\telapsed_since_sampling_start_ms\\tscreenshot_file\\n' > "$outdir/frame_capture_manifest.tsv"
   sample_start_ms="$(date +%s%3N)"
-  for frame in $(seq -w 1 35); do
+  for frame in $(seq -w 1 6); do
     if ! ensure_app_foreground; then break; fi
     observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     elapsed_ms=$(( $(date +%s%3N) - sample_start_ms ))
@@ -267,6 +267,22 @@ for back_step in 1 2 3; do
   sleep 5
   adb exec-out screencap -p > "$outdir/navigation_back_$back_step.png"
   capture_ui "navigation_back_$back_step"
+  # The prior verified 2026-11-21 screenshot of the native search page
+  # showed the user's frozen Hot Search #1 at the first card in the
+  # 热搜榜 section. Only select this *candidate* from that screen after
+  # confirming its unique search-page UI, then preserve what opened.
+  # Image text is not necessarily in Android's accessibility XML, so a
+  # post-click visual audit is mandatory before treating it as matching.
+  if [ "$back_step" = 1 ] &&
+    [ -s "$outdir/navigation_back_1_ui.xml" ] &&
+    grep -q 'text="排行"' "$outdir/navigation_back_1_ui.xml" &&
+    grep -q 'text="识剧"' "$outdir/navigation_back_1_ui.xml"; then
+    printf 'Native search hot-search first card: opening visually checked Top1 candidate\n' >> "$outdir/report.txt"
+    adb shell input tap 180 1450
+    sleep 14
+    adb exec-out screencap -p > "$outdir/frozen_top1_candidate_opened.png"
+    capture_ui frozen_top1_candidate_opened
+  fi
 done
 # Resolve an ordinary deep link in the official package only if Android itself
 # declares a matching VIEW intent filter. A failed resolution is a recorded result.
