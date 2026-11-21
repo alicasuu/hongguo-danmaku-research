@@ -79,7 +79,7 @@ class V1InitialTests(unittest.TestCase):
         bounds, chain, candidates = native_navigation_context(xml, "找剧")
         self.assertEqual(bounds, (0,240,600,350))
         self.assertEqual(len(chain), 2)
-        self.assertEqual(candidates, [])
+        self.assertEqual(candidates[0]["bounds"], "[0,240][600,350]")
 
     def test_zero_area_xml_controls_are_not_tapped(self):
         xml = ('<hierarchy><node text="找剧" bounds="[0,0][0,0]"/>'
