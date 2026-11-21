@@ -151,8 +151,11 @@ ensure_app_foreground || true
 adb exec-out screencap -p > "$outdir/video_attempt.png"
 capture_ui video
 
-if has_player_ui "$outdir/video_ui.xml" && ensure_app_foreground; then
-  printf 'Video player UI confirmed; inspecting menu and short sequence\\n' >> "$outdir/report.txt"
+if ensure_app_foreground; then
+  # Some video-heavy app screens make uiautomator dump time out even though
+  # the actual video is visible in screenshot evidence. Inspect the menu
+  # after successful in-app navigation without relying on that XML alone.
+  printf 'In-app video candidate; inspecting menu and short sequence\\n' >> "$outdir/report.txt"
   adb shell input tap 540 1200
   sleep 2
   adb exec-out screencap -p > "$outdir/video_controls.png"
