@@ -128,6 +128,21 @@ sleep 2
 adb exec-out screencap -p > "$outdir/video_controls.png"
 timeout 25s adb shell uiautomator dump /sdcard/hongguo-video.xml > /dev/null 2>&1 || true
 adb pull /sdcard/hongguo-video.xml "$outdir/video_ui.xml" > /dev/null 2>&1 || true
+
+# Inspect native player controls and the comments panel separately. Do not
+# post, like, follow, sign in, or treat ordinary comments as timed danmaku.
+adb shell input tap 1000 192
+sleep 3
+adb exec-out screencap -p > "$outdir/video_options.png"
+timeout 25s adb shell uiautomator dump /sdcard/hongguo-options.xml > /dev/null 2>&1 || true
+adb pull /sdcard/hongguo-options.xml "$outdir/video_options_ui.xml" > /dev/null 2>&1 || true
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+adb shell input tap 998 1645
+sleep 5
+adb exec-out screencap -p > "$outdir/comments_panel.png"
+timeout 25s adb shell uiautomator dump /sdcard/hongguo-comments.xml > /dev/null 2>&1 || true
+adb pull /sdcard/hongguo-comments.xml "$outdir/comments_ui.xml" > /dev/null 2>&1 || true
 adb shell dumpsys activity activities > "$outdir/activities.txt" 2>&1 || true
 adb logcat -d -t 800 -s AndroidRuntime:E ActivityTaskManager:I > "$outdir/launch_logcat.txt" 2>&1 || true
 if ! adb shell pm path "$package" | grep -q 'package:'; then
