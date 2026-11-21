@@ -71,6 +71,16 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 
+    def test_leaf_xml_navigation_control_is_clickable(self):
+        # ElementTree leaf nodes are falsey, even when they have valid bounds.
+        from hongguo.v1_android import Android
+        app = Android(ime=False)
+        calls = []
+        app.xml = lambda: '<hierarchy><node text="找剧" bounds="[400,200][600,260]"/></hierarchy>'
+        app.tap = lambda x, y: calls.append((x, y))
+        self.assertTrue(app.click_label("找剧"))
+        self.assertEqual(calls, [(500, 230)])
+
     def test_short_native_navigation_survives_without_relaxing_danmaku(self):
         tsv = ("page_num\tblock_num\tpar_num\tline_num\tconf\ttext\tleft\ttop\twidth\theight\n"
                "1\t1\t1\t1\t90\t找剧\t700\t90\t100\t55\n")

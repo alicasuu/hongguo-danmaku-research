@@ -178,7 +178,7 @@ class Android:
 
     def click_label(self, label, *, exact=True):
         node = matched_node(parse_ui(self.xml()), label, exact=exact)
-        if not node:
+        if node is None:
             return False
         x0, y0, x1, y1 = node_bounds(node)
         self.tap((x0 + x1) // 2, (y0 + y1) // 2)
@@ -231,10 +231,10 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
             time.sleep(2)
             continue
         edit = next((n for n in nodes if n.get("class", "").endswith("EditText") and node_bounds(n)), None)
-        if edit:
+        if edit is not None:
             break
         submit = matched_node(nodes, "搜索")
-        if submit:
+        if submit is not None:
             sx0, sy0, sx1, sy1 = node_bounds(submit)
             if sx0 > 700 and sy1 < 450:
                 # Actual observed search screen: the right-side TextView
@@ -255,13 +255,15 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
         search_controls = [{"class":n.get("class", ""), "bounds":n.get("bounds", ""),
                             "resource_id":n.get("resource-id", ""), "clickable":n.get("clickable", "")}
                            for n in nodes if node_text(n) == "搜索"][:3]
-        find_drama = matched_node(nodes, "找剧") or matched_node(nodes, "搜剧")
+        find_drama = matched_node(nodes, "找剧")
+        if find_drama is None:
+            find_drama = matched_node(nodes, "搜剧")
         theater = matched_node(nodes, "剧场")
         visual_find = next((v for v in visual_navigation if v["label"] in ("找剧", "搜剧")
                             and v["center"][1] < 950), None)
         visual_theater = next((v for v in visual_navigation if v["label"] == "剧场"
                                and v["center"][1] > 1600), None)
-        action = ("find_drama" if find_drama else "theater_tab" if theater else
+        action = ("find_drama" if find_drama is not None else "theater_tab" if theater is not None else
                   "ocr_find_drama" if visual_find else "ocr_theater_tab" if visual_theater else
                   "wait_for_native_ui" if attempt < 2 else "back_to_home" if attempt % 3 == 2 else
                   "theater_coordinate_fallback")
@@ -270,8 +272,8 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                           "visual_navigation":visual_navigation[:8],
                           "search_controls":search_controls, "ui_nodes":len(nodes),
                           "app_foreground":app.foreground()}, ensure_ascii=False), flush=True)
-        if find_drama or theater:
-            target = find_drama or theater
+        if find_drama is not None or theater is not None:
+            target = find_drama if find_drama is not None else theater
             x0, y0, x1, y1 = node_bounds(target)
             app.tap((x0+x1)//2, (y0+y1)//2)
         elif visual_find or visual_theater:
@@ -366,7 +368,7 @@ def enable_danmaku(app: Android, evidence: Path):
     (evidence / "danmaku_settings.xml").write_text(xml_text, encoding="utf-8")
     nodes = parse_ui(xml_text)
     label = matched_node(nodes, "弹幕")
-    if not label:
+    if label is None:
         app.back()
         raise RuntimeError("Danmaku setting missing; cannot attribute on-screen text to real danmaku")
     bounds = node_bounds(label)
@@ -407,8 +409,10 @@ def select_episode(app: Android, number: int, evidence: Path):
     for attempt in range(60):
         xml_text = app.xml()
         nodes = parse_ui(xml_text)
-        node = matched_node(nodes, target) or matched_node(nodes, str(number))
-        if node:
+        node = matched_node(nodes, target)
+        if node is None:
+            node = matched_node(nodes, str(number))
+        if node is not None:
             x0, y0, x1, y1 = node_bounds(node)
             app.tap((x0+x1)//2, (y0+y1)//2)
             time.sleep(3)
