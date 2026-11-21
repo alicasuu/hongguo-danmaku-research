@@ -1,14 +1,16 @@
-# Android emulator test environment
+# Android emulator and Hongguo app smoke tests
 
-The repo includes a **headless Android 35 emulator smoke test** on GitHub Actions, so local Docker/KVM or Android Studio are not prerequisites for the smoke check.
+A **headless Android 15 (API 35) Pixel 7 emulator** now installs and launches the real Hongguo Android app package (`com.phoenix.read`) in an isolated GitHub Actions runner.
 
-- Workflow: [`.github/workflows/android-emulator-smoke.yml`](../.github/workflows/android-emulator-smoke.yml)
-- Script: [`scripts/android_emulator_smoke.sh`](../scripts/android_emulator_smoke.sh)
-- Trigger: GitHub Actions > **Android emulator smoke test** > **Run workflow**, and on changes to the workflow or smoke script on `main`.
-- Runtime: GitHub-hosted `ubuntu-latest`; Android API 35, Google APIs, x86_64, Pixel 7 AVD.
-- Validation: `adb wait-for-device`, `sys.boot_completed=1`, OS/API/model/ABI properties, launch HOME, capture emulator screenshot.
-- Evidence: download the `android-emulator-smoke` workflow artifact (7-day retention), containing `device_info.txt` and `home.png`.
+- Workflow: [`.github/workflows/android-emulator-smoke.yml`](../.github/workflows/android-emulator-smoke.yml).
+- Scripts: [emulator boot](../scripts/android_emulator_smoke.sh), [APK identity and launch](../scripts/android_hongguo_app_smoke.sh).
+- Trigger: GitHub Actions > **Android emulator + Hongguo app smoke test** > Run workflow, or pushes touching the workflow/scripts.
+- Runtime: GitHub-hosted `ubuntu-latest`, Android 15, Pixel 7, Google APIs x86_64 AVD, adb.
+- App: `com.phoenix.read` version `7.4.5.32` (verified with Android `aapt`); APK signature cryptographically verifies with `apksigner`. APK SHA-256: `c4583f645d72b5022f060038a9fd286117f316c6fa7f46990c088083344a7d92`.
+- Source: Yingyonghui/AppChina marketplace (a third-party app store), matching the name, developer, package and version listed in Xiaomi and Tencent official app-store listings. The signer certificate was recorded in the CI artifact; the app's distribution provenance was **not** independently attested by the developer.
+- Evidence: [successful install and splash/permission screen run](https://github.com/alicasuu/hongguo-danmaku-research/actions/runs/44879942189) and [successful home UI after denying notifications](https://github.com/alicasuu/hongguo-danmaku-research/actions/runs/44880310249). Download the `android-hongguo-app-smoke` artifact from each run (7-day retention), including install log, APK metadata/signature, Android activity report, and actual screenshots.
+- Android native ABIs reported by APK: `arm64-v8a`. `adb install` succeeded on the runner's emulator; package presence was verified.
 
-This is a **device/runtime setup check only**. It does **not** install the Hongguo APK, log into any personal account, call native danmaku endpoints, or collect platform data. Those steps require a separately provided, authorized app/source and explicit test plan. No credentials, app identifiers, or private research outputs are committed here.
+**Evidence limits:** This proves installed package launch and visible app UI, **not** working short-drama video playback or real native timestamped danmaku. App exploration produces visually sampled screenshots, which must never be relabeled as full message-pool data. This workflow does not log into a personal account, read credentials, bypass client/server signing, accept terms, or call private APIs.
 
-The Android emulator action is pinned to `reactivecircus/android-emulator-runner` v2 commit `a421e43855164a8197daf9d8d40fe71c6996bb0d`; the job configures KVM when available and falls back to software acceleration otherwise.
+The Android emulator action is pinned to `reactivecircus/android-emulator-runner` commit `a421e43855164a8197daf9d8d40fe71c6996bb0d`. No APK binaries, credentials, or personal data are committed to Git; the APK is temporary and screenshots/logs are 7-day workflow artifacts.
