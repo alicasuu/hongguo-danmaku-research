@@ -100,10 +100,8 @@ def build_parser():
     t=sub.add_parser('select-top-views',help='Rank only dramas with actual observed drama-level view metrics')
     t.add_argument('--top',type=int,default=10)
     t.add_argument('--out',default='output/top_by_verified_views.csv')
-    si=sub.add_parser('sync-inbox',help='Incrementally import authorized provider CSV/JSON exports')
+    si=sub.add_parser('sync-inbox',help='Import authorized provider CSV/JSON exports once')
     si.add_argument('--inbox',default='data/inbox')
-    si.add_argument('--watch',action='store_true',help='Keep running; watches local authorized exports only')
-    si.add_argument('--interval',type=int,default=300,help='Seconds between folder scans; min 30')
     a=sub.add_parser('audit',help='Strict evidence-based requirement-by-requirement readiness audit')
     a.add_argument('--selection',type=Path,help='Audited JSON file documenting actual-views top-10 selection and source population')
     a.add_argument('--out',default='output/audit')
@@ -173,7 +171,7 @@ def main():
         result=select_top_by_views(dbpath,args.out,limit=args.top)
     elif args.command=='sync-inbox':
         from .inbox import sync_inbox
-        result=sync_inbox(dbpath,args.inbox,watch=args.watch,interval_seconds=args.interval)
+        result=sync_inbox(dbpath,args.inbox)
     elif args.command=='audit':
         from .acceptance import write_acceptance
         result=write_acceptance(dbpath,args.out,selection_file=args.selection,top=args.top)

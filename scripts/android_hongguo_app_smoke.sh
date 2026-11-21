@@ -117,6 +117,13 @@ adb exec-out screencap -p > "$outdir/after_consent.png"
 timeout 20s adb shell uiautomator dump /sdcard/hongguo-after-consent.xml > /dev/null 2>&1 || true
 adb pull /sdcard/hongguo-after-consent.xml "$outdir/after_consent_ui.xml" > /dev/null 2>&1 || true
 
+# V1's App search is separately controlled by the Python collector. This
+# bootstrap switch stops *before* the smoke tester's dynamic ranking taps.
+if [ "${HONGGUO_V1_BOOTSTRAP_ONLY:-0}" = "1" ]; then
+  printf '\nRESULT: V1_APP_INSTALLED_NO_DYNAMIC_RANKING\n' >> "$outdir/report.txt"
+  exit 0
+fi
+
 # The app has been seen auto-playing a drama after fresh consent, but a
 # separate run fell back to the Android launcher. Verify foreground state
 # before EVERY tap so a launcher search is never mistaken for Hongguo.

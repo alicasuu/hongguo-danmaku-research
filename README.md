@@ -1,11 +1,25 @@
 # 红果短剧研究数据采集系统 (Hongguo Research Crawler)
 
+## V1_initial（2026-11-21，冻结的 10 部／999 集）
+
+已改成**单次 Android UI 采集**，没有 cron、T+24h 复采或弹幕增量轮询。输入固定为 `data/frozen/series_catalog_2026-11-21.csv` 和 `data/frozen/episode_catalog_2026-11-21.csv`，不可重新选择动态热搜榜。V1 的指定剧目来自 2026-11-21 网页“热搜榜”冻结清单，**不等同经平台证明的真实播放量 Top10**。
+
+- 验证清单：`python -m hongguo.v1_android --verify-inventory-only`（应返回 10 / 999）。
+- Android 35 + 官方 `com.phoenix.read` App + Unicode ADBKeyBoard：见 `.github/workflows/v1-initial.yml` 和 `scripts/v1_install_keyboard.sh`。CI 首次推送运行一集 12 秒 pilot；经确认后 `workflow_dispatch` 运行真实 20 集批次，并通过 `checkpoint.json` 续跑。
+- 单次视频截图：约每 750 毫秒一次；只对播放器上方弹幕区域做中文 OCR，基于单集采样开始计算 `video_offset_ms_estimated`，`timestamp_source=ocr_estimated`，**不是平台原始时间戳**。动态字幕/UI 字样和 OCR 误判须通过截图证据复核。
+- XML 证据：`adb shell uiautomator dump` 读取搜索、剧集选择、弹幕开关、互动指标及评论预览，若无法独立核对匹配，标记失败或缺失，不猜测 ID／点赞数／回复关系。
+- 每轮输出 `episodes.csv`, `danmaku.csv`, `metrics.csv`, `comments.csv`, `checkpoint.json`, `V1_audit.json`。每批 20 集只提交小型索引／CSV／审计到仓库；本仓库公开，**未经版权/隐私授权的 MP4 与截图不会自动上传 GitHub**。原始设备录屏不含音轨，也不应冒充原始平台视频。
+
+**完成定义：** 审计报告分别列出已尝试、已通过完整性核验、OCR 弹幕候选、实际可验证评论／指标条数。不能将一集尝试成功或从 OCR 读出的所有字误称“999 集全部真实弹幕”。
+
+---
+
 ## Current research run (2026-11-09 Pacific)
 
 See [verified collection status](docs/RESEARCH_COMPLETION_STATUS.md) and the [three-repository review](docs/REPOSITORY_COMPARISON.md).
 Actual results: 10 dramas / 2,826 episode IDs reconciled; 240 comment/review previews; 22 episode metric observations on 10 first episodes; 22 existing visible overlays / 137 sightings. **Native danmaku: 0. Verified full Hongguo videos: 0.** These two priority requirements remain blocked by the absence of a demonstrated authorized source. Original SQLite records are preserved.
 
-Generate the current evidence report with `python -m hongguo research-report`; open `output/research_completion/report/report.html`. The separate `research-snapshot` collector, native raw-field/pagination fixes and optional `media-import --resume-transfers` are documented in the linked status file. A public-only 24-hour follow-up is scheduled; it has not yet been collected.
+Historical reports are reproducible with `python -m hongguo research-report`; the earlier public-site and native-API experiments are preserved as historical research only. Their past scheduling and repeated-update modes are retired for V1.
 
 
 

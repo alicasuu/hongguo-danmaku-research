@@ -231,7 +231,7 @@ def collect(cohort: list[dict], out: Path, delay: float) -> dict:
             "all_episode_level_interaction": "public detail exposes drama data; first player exposes episode 1 only",
             "views_and_shares": "not available where source omits them",
             "historical_full_comments_and_reply_pagination": "only embedded preview",
-            "second_24h_snapshot": "awaiting scheduled follow-up",
+            "v1_initial_ui_snapshot": "single Android UI collection only",
         },
         "failures": failures,
     }

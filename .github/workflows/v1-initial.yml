@@ -1,0 +1,90 @@
+name: Hongguo V1 initial single pass
+
+on:
+  workflow_dispatch:
+    inputs:
+      pilot:
+        description: 'One-episode isolated pilot; no committed checkpoint'
+        required: false
+        default: 'false'
+      max_episodes:
+        description: 'Maximum episodes in this batch (production: 20)'
+        required: false
+        default: '20'
+      capture_seconds:
+        description: 'Maximum capture duration per episode'
+        required: false
+        default: '115'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v1-initial.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: hongguo-v1-single-pass
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Frozen input contract
+        run: python -m hongguo.v1_android --verify-inventory-only
+      - name: Install screenshot OCR tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-chi-sim ffmpeg
+          python -m pip install --disable-pip-version-check pillow
+      - name: Permit emulator hardware acceleration
+        shell: bash
+        run: |
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+          fi
+      - name: Run native Android V1 acquisition
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        env:
+          V1_PILOT: ${{ github.event_name == 'push' && 'true' || inputs.pilot || 'false' }}
+          V1_BATCH_SIZE: ${{ inputs.max_episodes || '20' }}
+          V1_CAPTURE_SECONDS: ${{ inputs.capture_seconds || '115' }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          avd-name: hongguo-v1-ci
+          ram-size: 3072M
+          emulator-boot-timeout: 600
+          disable-linux-hw-accel: auto
+          script: |
+            HONGGUO_V1_BOOTSTRAP_ONLY=1 bash scripts/android_hongguo_app_smoke.sh
+            bash scripts/v1_install_keyboard.sh
+            if [ "$V1_PILOT" = true ]; then
+              python -m hongguo.v1_android --output output/v1_pilot --max-episodes 1 --capture-seconds 12 --interval-seconds .75
+            else
+              python -m hongguo.v1_android --max-episodes "$V1_BATCH_SIZE" --capture-seconds "$V1_CAPTURE_SECONDS" --interval-seconds .75
+            fi
+      # Raw audience text, captured screenshots, comments and video stay in the
+      # ephemeral runner. NEVER publish those data to a public GitHub repo or
+      # GitHub Actions artifact. Production persistence requires a separately
+      # configured private storage destination before launching a full batch.
+      - name: Upload sanitized V1 audit only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hongguo-v1-evidence-${{ github.run_number }}
+          path: |
+            output/v1_pilot/V1_audit.json
+            data/v1_initial/V1_audit.json
+          if-no-files-found: warn
+          retention-days: 7

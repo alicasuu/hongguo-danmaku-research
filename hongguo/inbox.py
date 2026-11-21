@@ -1,7 +1,6 @@
-"""Incremental authorized export ingestion; never misrepresents this as direct platform scraping."""
+"""One-shot authorized export ingestion; no polling or timers."""
 from __future__ import annotations
 import json
-import time
 from pathlib import Path
 from .storage import Store
 from .ingest import ingest
@@ -10,17 +9,13 @@ from .util import file_sha256, utcnow
 KINDS=('dramas','episodes','danmaku','comments','engagement','reviews','receipts')
 
 
-def sync_inbox(dbpath,inbox,*,watch=False,interval_seconds=300,max_cycles=None):
-    """Load new/changed provider exports. An external authorized source must deposit them."""
+def sync_inbox(dbpath,inbox):
+    """Import currently present provider exports exactly once."""
     inbox=Path(inbox).resolve()
     inbox.mkdir(parents=True,exist_ok=True)
-    if interval_seconds < 30 or interval_seconds > 86400:
-        raise ValueError('interval_seconds must be between 30 and 86400')
     totals={'file_attempts':0,'files_imported':0,'files_skipped':0,'files_failed':0,'rows_seen':0,'errors':[],
-            'source':str(inbox),'note':'Watches local provider exports only. Does not retrieve live platform content.'}
-    cycles=0
-    while True:
-        cycles+=1
+            'source':str(inbox),'note':'One local-provider export snapshot. Does not retrieve live platform content.'}
+    for _ in range(1):
         # Process parent IDs before episodes, then child data.
         for kind in KINDS:
             folder=inbox/kind
@@ -59,7 +54,5 @@ def sync_inbox(dbpath,inbox,*,watch=False,interval_seconds=300,max_cycles=None):
                 except Exception as e:
                     totals['files_failed']+=1
                     totals['errors'].append({'path':str(path),'error':str(e)})
-        if not watch or (max_cycles is not None and cycles>=max_cycles):break
-        time.sleep(interval_seconds)
-    totals['cycles']=cycles
+    totals['cycles']=1
     return totals
