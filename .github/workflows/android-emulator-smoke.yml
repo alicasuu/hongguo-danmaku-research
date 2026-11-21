@@ -1,4 +1,4 @@
-name: Android emulator smoke test
+name: Android emulator + Hongguo app smoke test
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/android-emulator-smoke.yml'
       - 'scripts/android_emulator_smoke.sh'
+      - 'scripts/android_hongguo_app_smoke.sh'
 
 permissions:
   contents: read
@@ -14,7 +15,7 @@ permissions:
 jobs:
   android-emulator:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out research repository
         uses: actions/checkout@v4
@@ -30,7 +31,7 @@ jobs:
             echo 'KVM unavailable: emulator action will attempt software acceleration.'
           fi
 
-      - name: Boot Android 35 AVD and verify adb
+      - name: Boot Android 35 AVD, install and launch official-package Hongguo APK
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2, pinned
         with:
           api-level: 35
@@ -38,16 +39,20 @@ jobs:
           arch: x86_64
           profile: pixel_7
           avd-name: hongguo-research-ci
-          ram-size: 2048M
+          ram-size: 3072M
           emulator-boot-timeout: 600
           disable-linux-hw-accel: auto
-          script: bash scripts/android_emulator_smoke.sh
+          script: |
+            bash scripts/android_emulator_smoke.sh
+            bash scripts/android_hongguo_app_smoke.sh
 
-      - name: Upload device-info and screenshot
+      - name: Upload emulator and app evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-emulator-smoke
-          path: output/android_emulator_smoke/
+          name: android-hongguo-app-smoke
+          path: |
+            output/android_emulator_smoke/
+            output/android_hongguo_app_smoke/
           if-no-files-found: warn
           retention-days: 7
