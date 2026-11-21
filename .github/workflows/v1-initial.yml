@@ -20,6 +20,7 @@ on:
     paths:
       - '.github/workflows/v1-initial.yml'
       - 'scripts/v1_install_keyboard.sh'
+      - 'scripts/v1_ci_acquire.sh'
       - 'scripts/android_hongguo_app_smoke.sh'
       - 'hongguo/v1_android.py'
       - 'hongguo/v1_ocr.py'
@@ -70,14 +71,9 @@ jobs:
           ram-size: 3072M
           emulator-boot-timeout: 600
           disable-linux-hw-accel: auto
-          script: |
-            HONGGUO_V1_BOOTSTRAP_ONLY=1 bash scripts/android_hongguo_app_smoke.sh
-            bash scripts/v1_install_keyboard.sh
-            if [ "$V1_PILOT" = true ]; then
-              python -m hongguo.v1_android --output output/v1_pilot --max-episodes 1 --capture-seconds 12 --interval-seconds .75
-            else
-              python -m hongguo.v1_android --max-episodes "$V1_BATCH_SIZE" --capture-seconds "$V1_CAPTURE_SECONDS" --interval-seconds .75
-            fi
+          # Emulator runner executes each script line with sh -c, so use one
+          # self-contained entrypoint for the conditional pilot/batch logic.
+          script: bash scripts/v1_ci_acquire.sh
       # Raw audience text, captured screenshots, comments and video stay in the
       # ephemeral runner. NEVER publish those data to a public GitHub repo or
       # GitHub Actions artifact. Production persistence requires a separately
