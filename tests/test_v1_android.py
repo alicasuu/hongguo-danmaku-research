@@ -88,6 +88,13 @@ class V1InitialTests(unittest.TestCase):
         with patch.object(app, "run", side_effect=subprocess.TimeoutExpired("adb", 18)):
             self.assertEqual(app.xml(), "")
 
+    def test_native_search_bar_parent_when_icon_child_is_missing(self):
+        from hongguo.v1_android import native_search_icon_bounds
+        xml = ('<hierarchy><node text="找剧" bounds="[32,263][126,332]"/>'
+               '<node resource-id="com.phoenix.read:id/hvr" clickable="true" '
+               'bounds="[32,136][922,231]"/></hierarchy>')
+        self.assertEqual(native_search_icon_bounds(xml), (32,136,922,231))
+
     def test_real_native_search_icon_is_selected_by_resource_id(self):
         from hongguo.v1_android import native_search_icon_bounds
         xml = ('<hierarchy><node text="找剧" bounds="[32,263][126,332]"/>'

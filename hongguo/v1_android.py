@@ -83,12 +83,14 @@ def matched_node(nodes, label, *, exact=True):
 
 
 def native_search_icon_bounds(xml_text: str):
-    """Target only Hongguo's observed native magnifier control."""
-    for node in parse_ui(xml_text):
-        if node.get("resource-id", "").endswith(":id/search_image_icon_container"):
-            bounds = node_bounds(node)
-            if bounds is not None:
-                return bounds
+    """Target the observed magnifier or its verified clickable search-bar parent."""
+    nodes = parse_ui(xml_text)
+    for suffix in (":id/search_image_icon_container", ":id/hvr"):
+        for node in nodes:
+            if node.get("resource-id", "").endswith(suffix):
+                bounds = node_bounds(node)
+                if bounds is not None and bounds[1] < 500 and node.get("clickable") == "true":
+                    return bounds
     return None
 
 
