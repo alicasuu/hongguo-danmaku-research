@@ -71,6 +71,11 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 
+    def test_zero_area_xml_controls_are_not_tapped(self):
+        xml = ('<hierarchy><node text="找剧" bounds="[0,0][0,0]"/>'
+               '<node text="找剧" bounds="[400,200][600,260]"/></hierarchy>')
+        self.assertEqual(node_bounds(matched_node(parse_ui(xml), "找剧")), (400,200,600,260))
+
     def test_leaf_xml_navigation_control_is_clickable(self):
         # ElementTree leaf nodes are falsey, even when they have valid bounds.
         from hongguo.v1_android import Android

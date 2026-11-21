@@ -68,7 +68,9 @@ def parse_ui(xml_text: str):
 
 def node_bounds(node):
     numbers = [int(n) for n in re.findall(r"\d+", node.get("bounds", ""))]
-    return tuple(numbers[:4]) if len(numbers) == 4 else None
+    if len(numbers) != 4 or numbers[2] <= numbers[0] or numbers[3] <= numbers[1]:
+        return None  # Do not tap invisible zero-area native controls.
+    return tuple(numbers)
 
 
 def node_text(node):
@@ -223,7 +225,12 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
         screenshot = evidence / f"search_nav_{attempt:02d}.png"
         try:
             app.screenshot(screenshot)
-            visual_navigation = visible_navigation_ocr(screenshot)
+            xml_has_actionable_nav = any(
+                node_text(n) in ("找剧", "搜剧", "剧场", "搜索") and node_bounds(n) is not None
+                for n in nodes)
+            # Native UI navigation is authoritative and much faster; use OCR
+            # only when the UI hierarchy has no independently tappable control.
+            visual_navigation = [] if xml_has_actionable_nav else visible_navigation_ocr(screenshot)
         except Exception:
             visual_navigation = []
         if "Viewing full screen" in xml_text and "Got it" in xml_text:
@@ -267,9 +274,16 @@ def exact_search(app: Android, title: str, evidence: Path, *, wait=20):
                   "ocr_find_drama" if visual_find else "ocr_theater_tab" if visual_theater else
                   "wait_for_native_ui" if attempt < 2 else "back_to_home" if attempt % 3 == 2 else
                   "theater_coordinate_fallback")
+        native_nav_controls = [
+            {"label":node_text(n), "bounds":n.get("bounds", ""),
+             "enabled":n.get("enabled", ""), "clickable":n.get("clickable", ""),
+             "resource_id":n.get("resource-id", "")}
+            for n in nodes if node_text(n) in ("找剧", "搜剧", "剧场", "搜索")
+        ][:10]
         print(json.dumps({"v1_search_navigation_attempt":attempt, "action":action,
                           "visible_navigation_labels":observed,
                           "visual_navigation":visual_navigation[:8],
+                          "native_navigation_controls":native_nav_controls,
                           "search_controls":search_controls, "ui_nodes":len(nodes),
                           "app_foreground":app.foreground()}, ensure_ascii=False), flush=True)
         if find_drama is not None or theater is not None:
