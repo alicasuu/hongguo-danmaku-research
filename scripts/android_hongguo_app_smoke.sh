@@ -163,14 +163,32 @@ if ensure_app_foreground; then
   sleep 3
   adb exec-out screencap -p > "$outdir/video_options.png"
   capture_ui video_options
-  # Keep this bounded and observational: no posting, likes, account login,
-  # or acceptance of any new agreement.
+  # The 2026-11-21 genuine player screenshot and UI hierarchy show the
+  # off-state Danmaku switch at bounds [901,1777][996,1830]. Toggle only
+  # when that exact control is confirmed in the current app UI.
+  if [ -s "$outdir/video_options_ui.xml" ] && grep -q 'text="弹幕"' "$outdir/video_options_ui.xml"; then
+    printf 'Native Danmaku settings control verified; enabling user-authorized overlay\\n' >> "$outdir/report.txt"
+    adb shell input tap 950 1803
+    sleep 3
+    adb exec-out screencap -p > "$outdir/video_danmaku_enabled.png"
+    capture_ui video_danmaku_enabled
+  else
+    printf 'Native Danmaku control not in current menu; not toggling blindly\\n' >> "$outdir/report.txt"
+  fi
+  # Dismissing the settings sheet pauses the video; the large centered
+  # play control is at [540,1100] in the verified paused screenshot.
   adb shell input keyevent KEYCODE_BACK
   sleep 2
-  for frame in $(seq -w 1 10); do
+  adb exec-out screencap -p > "$outdir/video_after_options.png"
+  adb shell input tap 540 1100
+  sleep 4
+  adb exec-out screencap -p > "$outdir/video_after_resume.png"
+  # Capture real in-app playback after enabling Danmaku. These are
+  # observational screenshots, not native message API response records.
+  for frame in $(seq -w 1 35); do
     if ! ensure_app_foreground; then break; fi
-    adb exec-out screencap -p > "$outdir/video_sample_$frame.png"
-    sleep 4
+    adb exec-out screencap -p > "$outdir/danmaku_frame_$frame.png"
+    sleep 3
   done
 else
   printf 'Video player UI not confirmed in this attempt\\n' >> "$outdir/report.txt"
