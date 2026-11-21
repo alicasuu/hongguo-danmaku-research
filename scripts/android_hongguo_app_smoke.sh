@@ -235,6 +235,26 @@ if ensure_app_foreground; then
 else
   printf 'Video player UI not confirmed in this attempt\\n' >> "$outdir/report.txt"
 fi
+# Diagnostic-only: identify verified public app deep-link capabilities and
+# capture ordinary Back-navigation screens for selecting the user\'s frozen Top10.
+# No private app storage, bypassed requests or credentials are accessed.
+"$aapt" dump xmltree "$apk" AndroidManifest.xml > "$outdir/manifest_intent_filters.txt" 2>&1 || true
+adb shell dumpsys package "$package" > "$outdir/package_intent_filters.txt" 2>&1 || true
+for back_step in 1 2 3; do
+  adb shell input keyevent KEYCODE_BACK
+  sleep 5
+  adb exec-out screencap -p > "$outdir/navigation_back_$back_step.png"
+  capture_ui "navigation_back_$back_step"
+done
+# Resolve an ordinary deep link in the official package only if Android itself
+# declares a matching VIEW intent filter. A failed resolution is a recorded result.
+adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE \\
+  -d 'https://hongguoduanju.com/player/7706825646403488793' \\
+  -p "$package" > "$outdir/deeplink_resolution.txt" 2>&1 || true
+sleep 12
+adb exec-out screencap -p > "$outdir/deeplink_result.png"
+capture_ui deeplink_result
+
 adb shell dumpsys activity activities > "$outdir/activities.txt" 2>&1 || true
 adb logcat -d -t 800 -s AndroidRuntime:E ActivityTaskManager:I > "$outdir/launch_logcat.txt" 2>&1 || true
 if ! adb shell pm path "$package" | grep -q 'package:'; then
