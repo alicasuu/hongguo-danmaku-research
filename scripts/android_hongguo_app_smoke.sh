@@ -202,9 +202,16 @@ if ensure_app_foreground; then
   adb exec-out screencap -p > "$outdir/video_after_resume.png"
   # Capture real in-app playback after enabling Danmaku. These are
   # observational screenshots, not native message API response records.
+  # A timepoint manifest accompanies every screenshot. These are UTC
+  # observation times, NOT the original video's playback offsets.
+  printf 'frame_index\\tcaptured_at_utc\\telapsed_since_sampling_start_ms\\tscreenshot_file\\n' > "$outdir/frame_capture_manifest.tsv"
+  sample_start_ms="$(date +%s%3N)"
   for frame in $(seq -w 1 35); do
     if ! ensure_app_foreground; then break; fi
+    observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+    elapsed_ms=$(( $(date +%s%3N) - sample_start_ms ))
     adb exec-out screencap -p > "$outdir/danmaku_frame_$frame.png"
+    printf '%s\\t%s\\t%s\\t%s\\n' "$frame" "$observed_at" "$elapsed_ms" "danmaku_frame_$frame.png" >> "$outdir/frame_capture_manifest.tsv"
     sleep 3
   done
 else
