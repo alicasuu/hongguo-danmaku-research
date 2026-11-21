@@ -110,7 +110,7 @@ def search_result_ocr_candidates(image: Path, title: str, *, min_result_y=400):
 
 def visible_navigation_ocr(image: Path):
     """Find only known app-navigation labels, never print viewer comments."""
-    rows = group_tesseract_tsv(tesseract_tsv(image), confidence_floor=34)
+    rows = group_tesseract_tsv(tesseract_tsv(image), confidence_floor=34, allow_short=True)
     labels = ("找剧", "搜剧", "剧场", "搜索", "首页", "同意并继续", "Got it")
     result = []
     for row in rows:

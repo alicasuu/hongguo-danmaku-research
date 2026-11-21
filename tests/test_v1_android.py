@@ -67,6 +67,12 @@ class V1InitialTests(unittest.TestCase):
         self.assertEqual(result, [{"label":"找剧", "bbox":[700,90,800,145],
                                    "center":[750,117]}])
 
+    def test_short_native_navigation_survives_without_relaxing_danmaku(self):
+        tsv = ("page_num\tblock_num\tpar_num\tline_num\tconf\ttext\tleft\ttop\twidth\theight\n"
+               "1\t1\t1\t1\t90\t找剧\t700\t90\t100\t55\n")
+        self.assertEqual(group_tesseract_tsv(tsv), [])
+        self.assertEqual(group_tesseract_tsv(tsv, allow_short=True)[0]["text"], "找剧")
+
     def test_metrics_count_scaling(self):
         self.assertEqual(chinese_number("12.5万"), "125000")
         self.assertEqual(chinese_number("隐藏"), "")

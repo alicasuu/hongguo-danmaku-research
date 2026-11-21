@@ -34,7 +34,7 @@ def is_valid_danmaku_text(text: str) -> bool:
     return 3 <= len(plain) <= 80 and bool(re.search(r"[\u4e00-\u9fffA-Za-z]", plain))
 
 
-def group_tesseract_tsv(raw: str, confidence_floor: float = 45.0):
+def group_tesseract_tsv(raw: str, confidence_floor: float = 45.0, *, allow_short: bool = False):
     """Group OCR tokens by visual line and retain bounding boxes/confidence."""
     rows = csv.DictReader(io.StringIO(raw), delimiter="\t")
     lines: dict[tuple[str, ...], list[dict]] = {}
@@ -53,7 +53,12 @@ def group_tesseract_tsv(raw: str, confidence_floor: float = 45.0):
     for tokens in lines.values():
         tokens.sort(key=lambda t: t["box"][0])
         text = "".join(t["text"] for t in tokens)
-        if not is_valid_danmaku_text(text):
+        # Danmaku requires >=3 meaningful characters, but 2-character native
+        # navigation labels (找剧, 剧场, 搜索) must survive UI OCR.
+        if not is_valid_danmaku_text(text) and not (
+            allow_short and 1 <= len(normalize(text)) <= 80
+            and bool(re.search(r"[\u4e00-\u9fffA-Za-z]", text))
+        ):
             continue
         x0 = min(t["box"][0] for t in tokens)
         y0 = min(t["box"][1] for t in tokens)
